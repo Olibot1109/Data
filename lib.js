@@ -3,7 +3,7 @@ window.DataAPI = {
     write(key, value) {
 
         location.href =
-            "/api.html" +
+            "https://data-dx5i.onrender.com/api.html" +
             "?action=write" +
             "&key=" + encodeURIComponent(key) +
             "&value=" + encodeURIComponent(value) +
@@ -13,7 +13,7 @@ window.DataAPI = {
     read(key) {
 
         location.href =
-            "/api.html" +
+            "https://data-dx5i.onrender.com/api.html" +
             "?action=read" +
             "&key=" + encodeURIComponent(key) +
             "&return=" + encodeURIComponent(location.href);
@@ -22,7 +22,7 @@ window.DataAPI = {
     list() {
 
         location.href =
-            "/api.html" +
+            "https://data-dx5i.onrender.com/api.html" +
             "?action=list" +
             "&return=" + encodeURIComponent(location.href);
     },
