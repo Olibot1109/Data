@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<script>
+
+const params = new URLSearchParams(location.search);
+
+const action = params.get("action");
+const key = params.get("key");
+const value = params.get("value");
+const back = params.get("return");
+
+let data =
+    JSON.parse(
+        localStorage.getItem("dataserver") || "{}"
+    );
+
+let result = {};
+
+if (action === "write") {
+
+    data[key] = value;
+
+    localStorage.setItem(
+        "dataserver",
+        JSON.stringify(data)
+    );
+
+    result = {
+        success: true
+    };
+}
+
+if (action === "read") {
+
+    result = {
+        success: true,
+        value: data[key]
+    };
+}
+
+if (action === "list") {
+
+    result = data;
+}
+
+if (back) {
+
+    location.href =
+        back +
+        (back.includes("?") ? "&" : "?") +
+        "data=" +
+        encodeURIComponent(
+            JSON.stringify(result)
+        );
+}
+
+</script>
+
+Processing...
+
+</body>
+</html>
