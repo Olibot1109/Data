@@ -1,0 +1,19 @@
+<script src="https://data-dx5i.onrender.com/lib.js"></script>
+
+<button onclick="DataAPI.write('coins',500)">
+Save
+</button>
+
+<button onclick="DataAPI.read('coins')">
+Load
+</button>
+
+<script>
+
+const result = DataAPI.response();
+
+if(result){
+    console.log(result);
+}
+
+</script>
