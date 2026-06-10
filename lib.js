@@ -1,43 +1,94 @@
-window.DataAPI = {
+window.DataAPI = (() => {
 
-    write(key, value) {
+    const API = "https://data-dx5i.onrender.com/api.html";
 
-        location.href =
-            "https://data-dx5i.onrender.com/api.html" +
-            "?action=write" +
-            "&key=" + encodeURIComponent(key) +
-            "&value=" + encodeURIComponent(value) +
-            "&return=" + encodeURIComponent(location.href);
-    },
+    const KEY_LAST = "__DATAAPI_LAST__";
 
-    read(key) {
+    function go(params) {
+        const url =
+            API + "?" + new URLSearchParams(params).toString();
 
-        location.href =
-            "https://data-dx5i.onrender.com/api.html" +
-            "?action=read" +
-            "&key=" + encodeURIComponent(key) +
-            "&return=" + encodeURIComponent(location.href);
-    },
+        // store last action before redirect (prevents data loss)
+        sessionStorage.setItem(KEY_LAST, JSON.stringify(params));
 
-    list() {
-
-        location.href =
-            "https://data-dx5i.onrender.com/api.html" +
-            "?action=list" +
-            "&return=" + encodeURIComponent(location.href);
-    },
-
-    response() {
-
-        const params =
-            new URLSearchParams(location.search);
-
-        const data =
-            params.get("data");
-
-        if (!data)
-            return null;
-
-        return JSON.parse(data);
+        location.href = url;
     }
-};
+
+    function write(key, value, meta = {}) {
+
+        go({
+            action: "write",
+            key,
+            value: JSON.stringify(value),
+            meta: JSON.stringify(meta),
+            return: location.href
+        });
+    }
+
+    function read(key, meta = {}) {
+
+        go({
+            action: "read",
+            key,
+            meta: JSON.stringify(meta),
+            return: location.href
+        });
+    }
+
+    function list() {
+
+        go({
+            action: "list",
+            return: location.href
+        });
+    }
+
+    function response() {
+
+        const params = new URLSearchParams(location.search);
+        const data = params.get("data");
+
+        if (!data) return null;
+
+        try {
+
+            const parsed = JSON.parse(data);
+
+            // cache last successful response
+            sessionStorage.setItem(
+                KEY_LAST + "_response",
+                JSON.stringify(parsed)
+            );
+
+            return parsed;
+
+        } catch (e) {
+
+            return data; // fallback raw
+        }
+    }
+
+    function lastResponse() {
+
+        const cached =
+            sessionStorage.getItem(KEY_LAST + "_response");
+
+        return cached ? JSON.parse(cached) : null;
+    }
+
+    function clear() {
+
+        sessionStorage.removeItem(KEY_LAST);
+        sessionStorage.removeItem(KEY_LAST + "_response");
+    }
+
+    return {
+        write,
+        read,
+        list,
+        response,
+        lastResponse,
+        clear
+    };
+
+})();
