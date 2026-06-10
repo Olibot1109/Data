@@ -1,143 +1,150 @@
+
+<!-- ============================================================
+     api.html  —  hosted on your server (e.g. data-dx5i.onrender.com)
+     Supports: read | write | delete | list | exists
+     ============================================================ -->
 <!DOCTYPE html>
 <html>
 <head>
-    <title>DataAPI Debug Panel</title>
-    <style>
-        body {
-            font-family: Arial;
-            padding: 20px;
-        }
-
-        pre {
-            padding: 10px;
-            overflow: auto;
-        }
-
-        .box {
-            margin-bottom: 20px;
-        }
-    </style>
+  <title>DataAPI</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:monospace;background:#0f1117;color:#c9d1d9;padding:20px;font-size:13px}
+    h1{font-size:15px;font-weight:600;color:#e6edf3;margin-bottom:16px;letter-spacing:.5px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .panel{background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden}
+    .panel.full{grid-column:1/-1}
+    .panel-head{padding:8px 12px;background:#1c2128;border-bottom:1px solid #30363d;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:#8b949e;display:flex;justify-content:space-between;align-items:center}
+    .badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600}
+    .badge.ok{background:#1a3a2a;color:#3fb950}
+    .badge.err{background:#3a1a1a;color:#f85149}
+    .badge.info{background:#1a2a3a;color:#58a6ff}
+    pre{padding:12px;overflow:auto;max-height:260px;line-height:1.6;white-space:pre-wrap;word-break:break-all;color:#c9d1d9}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+    button{background:#21262d;border:1px solid #30363d;color:#c9d1d9;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12px;font-family:monospace}
+    button:hover{background:#30363d}
+    #toast{position:fixed;bottom:20px;right:20px;background:#238636;color:#fff;padding:8px 14px;border-radius:6px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none}
+  </style>
 </head>
 <body>
-
-<h2>DataAPI Debug Panel</h2>
-
-<div class="box">
-    <h3>Request</h3>
-    <pre id="req"></pre>
+<h1>⬡ DataAPI Debug Panel</h1>
+<div class="grid">
+  <div class="panel">
+    <div class="panel-head">Request <span id="action-badge" class="badge info">—</span></div>
+    <pre id="req">—</pre>
+  </div>
+  <div class="panel">
+    <div class="panel-head">Response <span id="result-badge" class="badge">—</span></div>
+    <pre id="res">—</pre>
+  </div>
+  <div class="panel full">
+    <div class="panel-head">Storage <span id="db-count" class="badge info">0 keys</span></div>
+    <pre id="db">—</pre>
+  </div>
 </div>
-
-<div class="box">
-    <h3>Database</h3>
-    <pre id="db"></pre>
+<div class="actions">
+  <button onclick="copyResult()">Copy response</button>
+  <button onclick="clearAll()">Clear storage</button>
+  <button onclick="location.reload()">Refresh</button>
 </div>
-
-<div class="box">
-    <h3>Response</h3>
-    <pre id="res"></pre>
-</div>
+<div id="toast">Copied!</div>
 
 <script>
-const params = new URLSearchParams(location.search);
+const p = new URLSearchParams(location.search);
+const action = p.get('action');
+const key    = p.get('key');
+const back   = p.get('return');
+let   value  = p.get('value');
+const meta   = (() => { try { return JSON.parse(p.get('meta') || '{}'); } catch { return {}; } })();
 
-const action = params.get("action");
-const key = params.get("key");
-let value = params.get("value");
-const back = params.get("return");
+try { value = JSON.parse(value); } catch {}
 
-// try parse JSON values safely
-try {
-    value = JSON.parse(value);
-} catch (e) {
-    // keep as string if not JSON
+let db = {};
+try { db = JSON.parse(localStorage.getItem('dataserver') || '{}'); } catch {}
+
+// Request display
+const req = { action, key: key || undefined, value: value ?? undefined, meta: Object.keys(meta).length ? meta : undefined, return: back || undefined };
+Object.keys(req).forEach(k => req[k] === undefined && delete req[k]);
+document.getElementById('req').textContent = JSON.stringify(req, null, 2);
+document.getElementById('action-badge').textContent = action || 'none';
+
+// Process
+let result = { success: false, error: 'unknown action', action: action || null };
+
+if (action === 'write') {
+  if (!key) {
+    result = { success: false, error: 'missing key' };
+  } else {
+    db[key] = { value, ts: Date.now(), meta };
+    localStorage.setItem('dataserver', JSON.stringify(db));
+    result = { success: true, action: 'write', key, value };
+  }
 }
-
-// load DB safely
-let data = {};
-try {
-    data = JSON.parse(localStorage.getItem("dataserver") || "{}");
-} catch (e) {
-    data = {};
-}
-
-// REQUEST VIEW
-const request = {
-    action,
-    key,
-    value,
-    return: back
-};
-
-document.getElementById("req").textContent =
-    JSON.stringify(request, null, 2);
-
-// RESPONSE
-let result = {
-    success: false,
-    action: action || null
-};
-
-if (action === "write") {
-
-    data[key] = value;
-
-    localStorage.setItem(
-        "dataserver",
-        JSON.stringify(data)
-    );
-
-    result = {
-        success: true,
-        action: "write",
-        key,
-        value,
-        data
+else if (action === 'read') {
+  if (!key) {
+    result = { success: false, error: 'missing key' };
+  } else {
+    const entry = db[key];
+    result = { success: true, action: 'read', key,
+      value: entry?.value ?? null,
+      ts: entry?.ts ?? null,
+      meta: entry?.meta ?? null,
+      found: key in db
     };
+  }
+}
+else if (action === 'delete') {
+  if (!key) {
+    result = { success: false, error: 'missing key' };
+  } else {
+    const existed = key in db;
+    delete db[key];
+    localStorage.setItem('dataserver', JSON.stringify(db));
+    result = { success: true, action: 'delete', key, existed };
+  }
+}
+else if (action === 'exists') {
+  result = { success: true, action: 'exists', key, exists: key ? key in db : false };
+}
+else if (action === 'list') {
+  result = { success: true, action: 'list', keys: Object.keys(db),
+    data: Object.fromEntries(Object.entries(db).map(([k,v]) => [k, v?.value ?? v])) };
 }
 
-else if (action === "read") {
+// Display
+const flatten = obj => Object.fromEntries(Object.entries(obj).map(([k,v]) => [k, typeof v === 'object' && v?.value !== undefined ? v.value : v]));
+document.getElementById('db').textContent = JSON.stringify(flatten(db), null, 2);
+document.getElementById('db-count').textContent = Object.keys(db).length + ' keys';
+document.getElementById('res').textContent = JSON.stringify(result, null, 2);
 
-    result = {
-        success: true,
-        action: "read",
-        key,
-        value: data[key] ?? null,
-        data
-    };
-}
+const rb = document.getElementById('result-badge');
+rb.textContent = result.success ? 'ok' : 'error';
+rb.className = 'badge ' + (result.success ? 'ok' : 'err');
 
-else if (action === "list") {
-
-    result = {
-        success: true,
-        action: "list",
-        data
-    };
-}
-
-// DB VIEW
-document.getElementById("db").textContent =
-    JSON.stringify(data, null, 2);
-
-// RESPONSE VIEW
-document.getElementById("res").textContent =
-    JSON.stringify(result, null, 2);
-
-// CLEAN REDIRECT (FIXED)
+// Redirect
 if (back) {
-
+  try {
     const url = new URL(back);
+    url.searchParams.set('data', JSON.stringify(result));
+    setTimeout(() => location.href = url.toString(), 800);
+  } catch (e) {
+    console.error('Invalid return URL:', e);
+  }
+}
 
-    url.searchParams.set(
-        "data",
-        JSON.stringify(result)
-    );
+function copyResult() {
+  navigator.clipboard.writeText(JSON.stringify(result, null, 2));
+  const t = document.getElementById('toast');
+  t.style.opacity = 1;
+  setTimeout(() => t.style.opacity = 0, 1800);
+}
 
-    setTimeout(() => {
-        location.href = url.toString();
-    }, 1000);
+function clearAll() {
+  if (!confirm('Clear all DataAPI storage?')) return;
+  localStorage.removeItem('dataserver');
+  location.reload();
 }
 </script>
-
 </body>
 </html>
