@@ -1,6 +1,44 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <title>DataAPI Debug Panel</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #111;
+            color: #0f0;
+        }
+
+        pre {
+            background: #000;
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+
+        .box {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
 <body>
+
+<h2>DataAPI Debug Panel</h2>
+
+<div class="box">
+    <h3>Request</h3>
+    <pre id="req"></pre>
+</div>
+
+<div class="box">
+    <h3>Database (localStorage)</h3>
+    <pre id="db"></pre>
+</div>
+
+<div class="box">
+    <h3>Response</h3>
+    <pre id="res"></pre>
+</div>
 
 <script>
 const params = new URLSearchParams(location.search);
@@ -10,30 +48,37 @@ const key = params.get("key");
 const value = params.get("value");
 const back = params.get("return");
 
+// load DB
 let data = {};
-
 try {
     data = JSON.parse(localStorage.getItem("dataserver") || "{}");
 } catch (e) {
     data = {};
 }
 
+// build request object
+const request = {
+    action,
+    key,
+    value,
+    return: back
+};
+
+// show request immediately
+document.getElementById("req").textContent =
+    JSON.stringify(request, null, 2);
+
+// update DB depending on action
 let result = {
     success: false,
-    action: action || null,
-    key: key || null,
-    value: null,
-    data: null
+    action: action || null
 };
 
 if (action === "write") {
 
     data[key] = value;
 
-    localStorage.setItem(
-        "dataserver",
-        JSON.stringify(data)
-    );
+    localStorage.setItem("dataserver", JSON.stringify(data));
 
     result = {
         success: true,
@@ -64,7 +109,15 @@ else if (action === "list") {
     };
 }
 
-// delay redirect so storage + UI is stable
+// show DB
+document.getElementById("db").textContent =
+    JSON.stringify(data, null, 2);
+
+// show response
+document.getElementById("res").textContent =
+    JSON.stringify(result, null, 2);
+
+// send back after 1s
 if (back) {
 
     setTimeout(() => {
@@ -77,10 +130,7 @@ if (back) {
 
     }, 1000);
 }
-
 </script>
-
-<h3>Processing request...</h3>
 
 </body>
 </html>
