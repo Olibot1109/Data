@@ -3,7 +3,6 @@
 <body>
 
 <script>
-
 const params = new URLSearchParams(location.search);
 
 const action = params.get("action");
@@ -11,12 +10,21 @@ const key = params.get("key");
 const value = params.get("value");
 const back = params.get("return");
 
-let data =
-    JSON.parse(
-        localStorage.getItem("dataserver") || "{}"
-    );
+let data = {};
 
-let result = {};
+try {
+    data = JSON.parse(localStorage.getItem("dataserver") || "{}");
+} catch (e) {
+    data = {};
+}
+
+let result = {
+    success: false,
+    action: action || null,
+    key: key || null,
+    value: null,
+    data: null
+};
 
 if (action === "write") {
 
@@ -28,37 +36,51 @@ if (action === "write") {
     );
 
     result = {
-        success: true
+        success: true,
+        action: "write",
+        key,
+        value,
+        data
     };
 }
 
-if (action === "read") {
+else if (action === "read") {
 
     result = {
         success: true,
-        value: data[key]
+        action: "read",
+        key,
+        value: data[key] ?? null,
+        data
     };
 }
 
-if (action === "list") {
+else if (action === "list") {
 
-    result = data;
+    result = {
+        success: true,
+        action: "list",
+        data
+    };
 }
 
+// delay redirect so storage + UI is stable
 if (back) {
 
-    location.href =
-        back +
-        (back.includes("?") ? "&" : "?") +
-        "data=" +
-        encodeURIComponent(
-            JSON.stringify(result)
-        );
+    setTimeout(() => {
+
+        location.href =
+            back +
+            (back.includes("?") ? "&" : "?") +
+            "data=" +
+            encodeURIComponent(JSON.stringify(result));
+
+    }, 1000);
 }
 
 </script>
 
-Processing...
+<h3>Processing request...</h3>
 
 </body>
 </html>
